@@ -3,9 +3,30 @@ from tkmacosx import Button
 from tkinter import messagebox
 import random
 import pyperclip
+import json
+
 window = Tk()
 window.title("Password Manager")
 window.config(padx=50, pady=50)
+
+
+# ---------------------------- SEARCH SAVED WEBSITE ----------------------------- #
+
+def find_password():
+    website_input = website_entry.get()
+    try:
+        with open("data.json", mode="r") as data_file:
+            data = json.load(data_file)
+    except FileNotFoundError:
+        messagebox.showinfo(title="Error", message="No Data File Found")
+    else:
+        if website_input in data:
+            email = data[website_input]['email']
+            password = data[website_input]['password']
+            messagebox.showinfo(title=website_input, message=f"Email: {email}\n"
+                                                             f"Password: {password}")
+        else:
+            messagebox.showinfo(title="Error", message="No details for the website exists")
 
 
 # ---------------------------- PASSWORD GENERATOR ------------------------------- #
@@ -32,31 +53,38 @@ def generate_password():
     password_entry.delete(0, END)
     password_entry.insert(0, password)
 
+
 # ---------------------------- SAVE PASSWORD ------------------------------- #
 def save_password():
     website_input = website_entry.get()
     email_input = user_entry.get()
     password_input = password_entry.get()
-
+    new_data = {
+        website_input: {
+            "email": email_input,
+            "password": password_input,
+        }
+    }
     if len(website_input) == 0 or len(email_input) == 0 or len(password_input) == 0:
-        messagebox.showinfo("oopps", "Please don't leave any fields empty!")
+        messagebox.showinfo(title="oopps", message="Please don't leave any fields empty!")
     else:
-        is_ok = messagebox.askokcancel(title=website_input,
-                                       message=f"These are the details entered: Email: {email_input}\n"
-                                               f"Password: {password_input}\n Is it ok to save? ")
-        if is_ok:
-            with open("data.txt", mode="a") as data:
-                txt = f"{website_input} | {email_input} | {password_input}\n"
-                data.write(txt)
-                website_entry.delete(0, END)
-                user_entry.delete(0, END)
-                password_entry.delete(0, END)
+        try:
+            with open("data.json", mode="r") as data_file:
+                data = json.load(data_file)
+                print(data)
+        except FileNotFoundError:
+            with open("data.json", mode="w") as data_file:
+                json.dump(new_data, data_file, indent=4)
+        else:
+            data.update(new_data)
+            with open("data.json", "w") as data_file:
+                json.dump(data, data_file, indent=4)
+        finally:
+            website_entry.delete(0, END)
+            password_entry.delete(0, END)
 
 
 # ---------------------------- UI SETUP ------------------------------- #
-
-# window.minsize(width=600, height=400)
-
 
 canvas = Canvas(width=200, height=200, highlightthickness=0)
 lock_img = PhotoImage(file="logo.png")
@@ -72,10 +100,12 @@ user_label.grid(column=0, row=2)
 password_label = Label(text="Password:")
 password_label.grid(column=0, row=3)
 
-website_entry = Entry(width=35)
-website_entry.grid(column=1, row=1, columnspan=2)
+website_entry = Entry(width=20)
+website_entry.grid(column=1, row=1)
 website_entry.focus()
-website = website_entry.get()
+
+search_btn = Button(text="Search", bg="grey", width=135, borderless=1, command=find_password)
+search_btn.grid(column=2, row=1)
 
 user_entry = Entry(width=35)
 user_entry.grid(column=1, row=2, columnspan=2)
@@ -83,7 +113,6 @@ user_entry.insert(0, "example@gmail.com")
 
 password_entry = Entry(width=20)
 password_entry.grid(column=1, row=3)
-password = password_entry.get()
 
 generate_btn = Button(text="Generate Password", bg="grey", width=135, borderless=1, command=generate_password)
 generate_btn.grid(column=2, row=3)
